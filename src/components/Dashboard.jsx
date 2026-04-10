@@ -49,13 +49,13 @@ export default function Dashboard() {
 
   return (
     <div className="flex gap-4 h-screen p-4">
-      {/* Mapa izquierda - Full height */}
-      <div className="w-[850px] shrink-0 h-full border-4 rounded-xl border-gray-300 overflow-hidden shadow-lg">
+      {/* Mapa izquierda - Flexible */}
+      <div className="flex-1 h-full border-4 rounded-xl border-gray-300 overflow-hidden shadow-lg min-w-0">
         <Mapa lluviaMM={lluvia} vientoMs={viento} nivelesSimulados={nivelesSimulados} />
       </div>
 
       {/* Centro: Tiempo arriba + Simulador abajo */}
-      <div className="flex-1 flex flex-col gap-4 min-w-0">
+      <div className="w-96 shrink-0 flex flex-col gap-4 min-w-0">
         {/* Lluvia y Viento */}
         <div className="shrink-0">
           <Tiempo

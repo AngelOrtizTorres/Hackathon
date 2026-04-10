@@ -23,12 +23,10 @@ function getEstado(nivel) {
 }
 
 export default function Simulador({ onNivelesActualizados, onReiniciar }) {
-  const mapRef = useRef(null)
-  const mapInstance = useRef(null)
-  const markersRef = useRef({})
   const intervalRef = useRef(null)
 
   const [lluvia, setLluvia] = useState(15)
+  const [viento, setViento] = useState(0)
   const [duracion, setDuracion] = useState(30)
   const [simulando, setSimulando] = useState(false)
   const [progreso, setProgreso] = useState(0)
@@ -74,92 +72,37 @@ export default function Simulador({ onNivelesActualizados, onReiniciar }) {
     }
   }, [niveles, onNivelesActualizados])
 
-  // Calcular nivel máximo que alcanzará cada sensor simulando la lluvia
+  // Calcular nivel máximo que alcanzará cada sensor con lluvia, viento y datos históricos
   function calcularNivelMax(sensor, nivelActual) {
-    // El nivel máximo es el actual + incremento por lluvia
-    const incremento = lluvia * (sensibilidad[sensor.id] ?? 1.0)
-    return Math.min(100, nivelActual + incremento)
-  }
+    // 1. Incremento base por lluvia × sensibilidad del sensor
+    const incrementoLluvia = lluvia * (sensibilidad[sensor.id] ?? 1.0)
 
-  // Inicializar el mapa con los sensores de la API
-  useEffect(() => {
-    if (sensores.length === 0 || mapInstance.current) return
+    // 2. Factor multiplicador por viento (es un amplificador, no suma independiente)
+    // A mayor viento, se amplifica más el efecto de la lluvia
+    const factorViento = 1 + (viento / 100) // 30 m/s = +30% de amplificación
+    const incrementoConViento = incrementoLluvia * factorViento
 
-    import("leaflet").then((L) => {
-      const link = document.createElement("link")
-      link.rel = "stylesheet"
-      link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-      document.head.appendChild(link)
-
-      const map = L.map(mapRef.current).setView(
-        [37.8718, -4.7760],
-        15
+    // 3. Agregar referencia histórica (qué pasó en lluvia similar)
+    let incrementoHistorico = 0
+    if (Array.isArray(sensor?.historico) && sensor.historico.length > 0) {
+      const episodioSimilar = sensor.historico.reduce((prev, curr) =>
+        Math.abs(curr.lluvia_mm - lluvia) < Math.abs(prev.lluvia_mm - lluvia) ? curr : prev
       )
-      mapInstance.current = map
+      
+      if (episodioSimilar?.nivel_maximo != null) {
+        // Histórico: qué nivel máximo se registró con lluvia similar
+        // Ponderado al 20% (es información, pero el evento actual será diferente)
+        incrementoHistorico = episodioSimilar.nivel_maximo * 0.2
+      }
+    }
 
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: "© OpenStreetMap contributors",
-      }).addTo(map)
+    // Usar el máximo entre el incremental calculado O el histórico
+    // (No sumarlos, usar el peor escenario)
+    const incrementoFinal = Math.max(incrementoConViento, incrementoHistorico)
 
-      sensores.forEach((sensor) => {
-        const nivel = niveles[sensor.id] ?? sensor?.actual?.nivel ?? 10
-        const color = getColor(nivel)
-        const icono = L.divIcon({
-          className: "",
-          html: `<div style="
-            width: 20px; height: 20px;
-            background: ${color};
-            border-radius: 50%;
-            border: 2px solid white;
-            box-shadow: 0 0 10px ${color};
-          "></div>`,
-          iconSize: [20, 20],
-          iconAnchor: [10, 10],
-        })
-
-        const marker = L.marker([sensor.lat, sensor.lng], { icon: icono })
-          .addTo(map)
-          .bindPopup(`<b>${sensor.nombre}</b><br/>Nivel: ${nivel.toFixed(0)}%`)
-
-        markersRef.current[sensor.id] = marker
-      })
-    })
-  }, [sensores, niveles])
-
-  // Actualizar marcadores cuando cambian los niveles
-  useEffect(() => {
-    if (!mapInstance.current || sensores.length === 0) return
-
-    import("leaflet").then((L) => {
-      sensores.forEach((sensor) => {
-        const nivel = niveles[sensor.id] ?? sensor?.actual?.nivel ?? 10
-        const color = getColor(nivel)
-        const marker = markersRef.current[sensor.id]
-        if (!marker) return
-
-        const icono = L.divIcon({
-          className: "",
-          html: `<div style="
-            width: 20px; height: 20px;
-            background: ${color};
-            border-radius: 50%;
-            border: 2px solid white;
-            box-shadow: 0 0 10px ${color};
-            ${nivel > 80 ? "animation: pulse 1.5s infinite;" : ""}
-          "></div>`,
-          iconSize: [20, 20],
-          iconAnchor: [10, 10],
-        })
-
-        marker.setIcon(icono)
-        marker.setPopupContent(
-          `<b>${sensor.nombre}</b><br/>` +
-            `Nivel: ${nivel.toFixed(0)}%<br/>` +
-            `Estado: ${getEstado(nivel)}`
-        )
-      })
-    })
-  }, [sensores, niveles])
+    // Retornar nivel actual + incremento final, limitado a 0-100
+    return Math.min(100, Math.max(0, nivelActual + incrementoFinal))
+  }
 
   function iniciarSimulacion() {
     if (simulando || sensores.length === 0) return
@@ -223,13 +166,11 @@ export default function Simulador({ onNivelesActualizados, onReiniciar }) {
         }
       `}</style>
 
-      <div className="flex gap-4 h-full items-start">
-        {/* Panel izquierdo - Configuración */}
-        <div className="w-72 shrink-0 flex flex-col gap-4 overflow-y-auto">
-          <h2 className="text-lg font-bold text-white">Simulador de Escenarios</h2>
+      <div className="flex flex-col gap-4 overflow-y-auto">
+        <h2 className="text-lg font-bold text-white">Simulador de Escenarios</h2>
 
-          {/* Configuración */}
-          <div className="bg-gray-900 border border-gray-700 rounded-xl p-4 flex flex-col gap-4">
+        {/* Configuración */}
+        <div className="bg-gray-900 border border-gray-700 rounded-xl p-4 flex flex-col gap-4">
             <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">
               Configurar escenario
             </p>
@@ -253,6 +194,28 @@ export default function Simulador({ onNivelesActualizados, onReiniciar }) {
                 <span>Ligera</span>
                 <span>Moderada</span>
                 <span>Torrencial</span>
+              </div>
+            </div>
+
+            {/* Viento */}
+            <div className="flex flex-col gap-2">
+              <div className="flex justify-between">
+                <label className="text-sm text-gray-300">Velocidad del viento</label>
+                <span className="text-sm font-bold text-cyan-400">{viento} m/s</span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="30"
+                value={viento}
+                onChange={(e) => setViento(Number(e.target.value))}
+                disabled={simulando}
+                className="w-full accent-cyan-500"
+              />
+              <div className="flex justify-between text-xs text-gray-500">
+                <span>Calmoso</span>
+                <span>Moderado</span>
+                <span>Huracán</span>
               </div>
             </div>
 
@@ -306,12 +269,6 @@ export default function Simulador({ onNivelesActualizados, onReiniciar }) {
                 🔄 Reiniciar
               </button>
             )}
-          </div>
-        </div>
-
-        {/* Mapa centro */}
-        <div className="flex-1 h-full rounded-lg overflow-hidden shadow-lg">
-          <div ref={mapRef} style={{ height: "100%", width: "100%", borderRadius: "8px" }} />
         </div>
       </div>
     </>
