@@ -206,7 +206,7 @@ export default function Simulador({ onNivelesActualizados, onReiniciar }) {
               <input
                 type="range"
                 min="0"
-                max="30"
+                max="70"
                 value={viento}
                 onChange={(e) => setViento(Number(e.target.value))}
                 disabled={simulando}
