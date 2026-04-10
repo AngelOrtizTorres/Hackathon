@@ -1,3 +1,4 @@
+import os
 from flask import Flask, jsonify
 from flask_cors import CORS # Muy importante para que Astro no de error
 
@@ -6,7 +7,6 @@ CORS(app) # Esto evita el error de "Cross-Origin" en el navegador de tu compañe
 
 # Datos de ejemplo (Mock local) según el formato que acordasteis
 sensores_db = [
-    [
   {
     "id": "sensor-01",
     "nombre": "Jardin Botanico",
@@ -47,13 +47,14 @@ sensores_db = [
     ]
   }
 ]
-]
+
 
 @app.route('/sensores', methods=['GET'])
 def get_sensores():
     return jsonify(sensores_db)
 
 if __name__ == '__main__':
-    # '0.0.0.0' abre el servidor a toda la red local
-    # port=8000 es el que está usando tu compañero
-    app.run(host='0.0.0.0', port=8000, debug=True)
+    # Esto lee el puerto que Render te asigna. Si no hay ninguno, usa el 8000 por defecto.
+    port = int(os.environ.get('PORT', 8000))
+    # Importante usar host='0.0.0.0'
+    app.run(host='0.0.0.0', port=port)
