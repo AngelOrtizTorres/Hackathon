@@ -9,6 +9,8 @@ export default function Dashboard() {
   const [nivelesSimulados, setNivelesSimulados] = useState(null)
   const [sensores, setSensores] = useState([])
   const [niveles, setNiveles] = useState({})
+  const [zonaSeleccionada, setZonaSeleccionada] = useState(null)
+  const [cuadrillasEnviadas, setCuadrillasEnviadas] = useState({})
 
   // Cargar sensores para mostrar alertas
   useEffect(() => {
@@ -47,11 +49,20 @@ export default function Dashboard() {
     return n > 50 && n <= 80
   })
 
+  // Enviar cuadrilla
+  const handleEnviarCuadrilla = (sensorId, sensorNombre) => {
+    setCuadrillasEnviadas((prev) => ({
+      ...prev,
+      [sensorId]: true,
+    }))
+    console.log(`Cuadrilla enviada a ${sensorNombre}`)
+  }
+
   return (
     <div className="flex gap-4 h-screen p-4">
       {/* Mapa izquierda - Flexible */}
       <div className="flex-1 h-full border-4 rounded-xl border-gray-300 overflow-hidden shadow-lg min-w-0">
-        <Mapa lluviaMM={lluvia} vientoMs={viento} nivelesSimulados={nivelesSimulados} />
+        <Mapa lluviaMM={lluvia} vientoMs={viento} nivelesSimulados={nivelesSimulados} zonaSeleccionada={zonaSeleccionada} />
       </div>
 
       {/* Centro: Tiempo arriba + Simulador abajo */}
@@ -81,14 +92,15 @@ export default function Dashboard() {
               })
               setNiveles(nivelesReales)
             }}
+            onZonaSeleccionada={setZonaSeleccionada}
           />
         </div>
       </div>
 
       {/* Alertas derecha - Full height */}
-      <div className="w-80 shrink-0 flex flex-col gap-3 overflow-y-auto">
+      <div className="w-80 shrink-0 flex flex-col gap-3 h-full overflow-y-auto">
         {criticos.length > 0 && (
-          <div className="bg-red-950 border border-red-600 rounded-lg p-4 flex flex-col gap-3 shadow-lg flex-shrink-0">
+          <div className="bg-red-950 border border-red-600 rounded-lg p-4 flex flex-col gap-3 shadow-lg shrink-0">
             <p className="text-sm text-red-300 uppercase font-bold tracking-wider">⚠️ CRÍTICOS ({criticos.length})</p>
             <div className="space-y-2">
               {criticos.map((s) => (
@@ -97,9 +109,20 @@ export default function Dashboard() {
                     <span className="text-white text-sm font-semibold">{s.nombre}</span>
                     <span className="text-red-300 font-bold text-sm bg-red-900 px-2.5 py-1 rounded">{(niveles[s.id] ?? 0).toFixed(0)}%</span>
                   </div>
-                  <div className="w-full h-2 bg-red-900 rounded-full overflow-hidden">
+                  <div className="w-full h-2 bg-red-900 rounded-full overflow-hidden mb-2">
                     <div className="h-full bg-red-500" style={{ width: `${Math.min(100, niveles[s.id] ?? 0)}%` }} />
                   </div>
+                  <button
+                    onClick={() => handleEnviarCuadrilla(s.id, s.nombre)}
+                    disabled={cuadrillasEnviadas[s.id]}
+                    className={`w-full text-xs font-semibold py-1.5 rounded transition-colors ${
+                      cuadrillasEnviadas[s.id]
+                        ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                        : 'bg-red-600 hover:bg-red-700 text-white'
+                    }`}
+                  >
+                    {cuadrillasEnviadas[s.id] ? '✓ Cuadrilla enviada' : '🚨 Enviar cuadrilla'}
+                  </button>
                 </div>
               ))}
             </div>
@@ -107,7 +130,7 @@ export default function Dashboard() {
         )}
 
         {alertas.length > 0 && (
-          <div className="bg-orange-950 border border-orange-600 rounded-lg p-4 flex flex-col gap-3 shadow-lg flex-shrink-0">
+          <div className="bg-orange-950 border border-orange-600 rounded-lg p-4 flex flex-col gap-3 shadow-lg shrink-0">
             <p className="text-sm text-orange-300 uppercase font-bold tracking-wider">⚡ ALERTAS ({alertas.length})</p>
             <div className="space-y-2">
               {alertas.map((s) => (
@@ -126,7 +149,7 @@ export default function Dashboard() {
         )}
 
         {criticos.length === 0 && alertas.length === 0 && (
-          <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 text-center text-gray-400 flex-shrink-0">
+          <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 text-center text-gray-400 shrink-0">
             <p className="text-sm">✅ Todos los sensores NORMALES</p>
           </div>
         )}

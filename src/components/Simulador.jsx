@@ -1,5 +1,14 @@
 import { useEffect, useRef, useState } from "react"
 
+// Zonas de Córdoba, España con sus coordenadas centrales
+const ZONAS_CORDOBA = [
+  { id: 'centro', nombre: 'Centro', lat: 37.8718, lng: -4.7800 },
+  { id: 'norte', nombre: 'Zona Norte', lat: 37.91, lng: -4.78 },
+  { id: 'sur', nombre: 'Zona Sur', lat: 37.83, lng: -4.78 },
+  { id: 'este', nombre: 'Zona Este', lat: 37.87, lng: -4.72 },
+  { id: 'oeste', nombre: 'Zona Oeste', lat: 37.87, lng: -4.84 },
+]
+
 // const sensoresBase = [...] ya no se usa aquí; se traen de la API
 const sensibilidad = {
   "sensor-01": 1.8,
@@ -22,7 +31,7 @@ function getEstado(nivel) {
   return "NORMAL"
 }
 
-export default function Simulador({ onNivelesActualizados, onReiniciar }) {
+export default function Simulador({ onNivelesActualizados, onReiniciar, onZonaSeleccionada }) {
   const intervalRef = useRef(null)
 
   const [lluvia, setLluvia] = useState(15)
@@ -33,6 +42,7 @@ export default function Simulador({ onNivelesActualizados, onReiniciar }) {
   const [sensores, setSensores] = useState([])
   const [niveles, setNiveles] = useState({})
   const [terminado, setTerminado] = useState(false)
+  const [zonaSeleccionada, setZonaSeleccionada] = useState(null)
 
   // Cargar sensores de la API (tipo Mapa)
   // Cargar sensores de la API con sus datos reales
@@ -156,6 +166,15 @@ export default function Simulador({ onNivelesActualizados, onReiniciar }) {
     if (onReiniciar) onReiniciar()
   }
 
+  function handleZonaChange(e) {
+    const zonaId = e.target.value
+    const zona = ZONAS_CORDOBA.find((z) => z.id === zonaId)
+    setZonaSeleccionada(zona || null)
+    if (onZonaSeleccionada) {
+      onZonaSeleccionada(zona || null)
+    }
+  }
+
   return (
     <>
       <style>{`
@@ -166,7 +185,7 @@ export default function Simulador({ onNivelesActualizados, onReiniciar }) {
         }
       `}</style>
 
-      <div className="flex flex-col gap-4 overflow-y-auto">
+      <div className="flex flex-col gap-2 overflow-y-auto h-full">
         <h2 className="text-lg font-bold text-white">Simulador de Escenarios</h2>
 
         {/* Configuración */}
@@ -269,6 +288,23 @@ export default function Simulador({ onNivelesActualizados, onReiniciar }) {
                 🔄 Reiniciar
               </button>
             )}
+        </div>
+
+        {/* Zonas de Córdoba - Fuera de la box */}
+        <div className="flex flex-col gap-2">
+          <label className="text-sm text-gray-300">Seleccionar zona</label>
+          <select
+            value={zonaSeleccionada?.id || ""}
+            onChange={handleZonaChange}
+            className="w-full bg-gray-800 text-white border border-gray-600 rounded-lg p-2 text-sm cursor-pointer hover:border-gray-500 transition-colors"
+          >
+            <option value="">-- Seleccionar zona --</option>
+            {ZONAS_CORDOBA.map((zona) => (
+              <option key={zona.id} value={zona.id}>
+                {zona.nombre}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
     </>
