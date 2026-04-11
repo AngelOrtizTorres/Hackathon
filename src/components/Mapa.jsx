@@ -100,6 +100,7 @@ export default function Mapa({ lluviaMM = 0, vientoMs = 0, reiniciarAPIData = fa
   const [sensores, setSensores] = useState([])
   const [usandoMock, setUsandoMock] = useState(false)
   const [filtro, setFiltro] = useState("todos") // "todos" | "nivel" | "caudal" | "ambos"
+  const [mostrarTodos, setMostrarTodos] = useState(false)
 
   useEffect(() => {
     const cargarDatos = async () => {
@@ -176,8 +177,8 @@ export default function Mapa({ lluviaMM = 0, vientoMs = 0, reiniciarAPIData = fa
         const nivelSimulado = nivelesSimulados ? nivelesSimulados[sensor.id] : null
         const riesgo = calcularRiesgo(sensor, nivelSimulado, lluviaMM, vientoMs)
 
-        // Solo mostrar sensores en ALERTA o superior (riesgo > 50)
-        if (riesgo <= 50) {
+        // Filtrar por riesgo: mostrar todos si está activado, o solo alerta+críticos
+        if (!mostrarTodos && riesgo <= 50) {
           if (markersRef.current[sensor.id]) {
             mapInstance.current.removeLayer(markersRef.current[sensor.id])
             delete markersRef.current[sensor.id]
@@ -234,7 +235,7 @@ export default function Mapa({ lluviaMM = 0, vientoMs = 0, reiniciarAPIData = fa
 
       mapInstance.current.invalidateSize()
     })
-  }, [sensores, lluviaMM, vientoMs, nivelesSimulados, filtro])
+  }, [sensores, lluviaMM, vientoMs, nivelesSimulados, filtro, mostrarTodos])
 
   return (
     <>
@@ -298,6 +299,16 @@ export default function Mapa({ lluviaMM = 0, vientoMs = 0, reiniciarAPIData = fa
             <div style={{ width: 12, height: 12, borderRadius: "50%", background: "#ef4444" }} />
             <span>Crítico</span>
           </div>
+          <hr className="my-2 border-gray-600" />
+          <label className="flex items-center gap-2 cursor-pointer hover:text-white transition-colors">
+            <input
+              type="checkbox"
+              checked={mostrarTodos}
+              onChange={(e) => setMostrarTodos(e.target.checked)}
+              className="w-4 h-4 cursor-pointer"
+            />
+            <span className="text-xs">Mostrar todos</span>
+          </label>
         </div>
 
         <div ref={mapRef} style={{ height: "100%", width: "100%" }} />
