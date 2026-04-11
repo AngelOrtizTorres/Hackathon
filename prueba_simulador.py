@@ -11,9 +11,9 @@ CORS(app)
 
 # 1. Base de datos con los 6 sensores y su estructura profesional
 sensores_db = [
-    { "id": "sensor-01", "nombre": "Avenida de Corregidor", "lat": 37.873105, "lng": -4.785686, "actual": { "nivel": 91, "caudal": None } },    
+    { "id": "sensor-01", "nombre": "Avenida de Corregidor", "lat": 37.873105, "lng": -4.785686, "actual": { "nivel": 71, "caudal": None } },    
     { "id": "sensor-02", "nombre": "Jardín Botánico", "lat": 37.867682, "lng": -4.786393, "actual": { "nivel": None, "caudal": 290 } },    
-    { "id": "sensor-03", "nombre": "Av. Fray Albino", "lat": 37.871733, "lng": -4.780790, "actual": { "nivel": 75, "caudal": 160 } },
+    { "id": "sensor-03", "nombre": "Av. Fray Albino", "lat": 37.871733, "lng": -4.780790, "actual": { "nivel": 85, "caudal": 260 } },
     { "id": "sensor-04", "nombre": "Av. Conde de Vallellano", "lat": 37.876438, "lng": -4.786218, "actual": { "nivel": None, "caudal": 560 } },    
     { "id": "sensor-05", "nombre": "Acera mira al río", "lat": 37.875659, "lng": -4.776240, "actual": { "nivel": 50, "caudal": None } },    
     { "id": "sensor-06", "nombre": "Calle de Pio XII", "lat": 37.871171, "lng": -4.774394, "actual": { "nivel": 30, "caudal": 95 } }
