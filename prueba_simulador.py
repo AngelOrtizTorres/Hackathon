@@ -29,8 +29,8 @@ def simulador_backend():
             s["actual"]["nivel"] = max(0, min(100, s["actual"]["nivel"] + random.randint(-2, 2)))
             s["actual"]["caudal"] = max(0, s["actual"]["caudal"] + random.randint(-5, 5))
         
-        # Espera 10 segundos antes de la siguiente actualización
-        time.sleep(10)
+        # Espera 30 segundos antes de la siguiente actualización
+        time.sleep(30)
 
 # Lanzamos el simulador en segundo plano al arrancar el servidor
 threading.Thread(target=simulador_backend, daemon=True).start()
