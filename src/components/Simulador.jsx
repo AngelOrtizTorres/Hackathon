@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react"
+import { Play, RotateCcw, CloudDrizzle, Wind, Clock } from "lucide-react"
 
 // Zonas de Córdoba, España con sus coordenadas centrales
 const ZONAS_CORDOBA = [
@@ -9,7 +10,6 @@ const ZONAS_CORDOBA = [
   { id: 'oeste', nombre: 'Zona Oeste', lat: 37.87, lng: -4.84 },
 ]
 
-// const sensoresBase = [...] ya no se usa aquí; se traen de la API
 const sensibilidad = {
   "sensor-01": 1.8,
   "sensor-02": 2.2,
@@ -17,18 +17,6 @@ const sensibilidad = {
   "sensor-04": 1.0,
   "sensor-05": 2.5,
   "sensor-06": 1.2
-}
-
-function getColor(nivel) {
-  if (nivel > 80) return "#ef4444"
-  if (nivel > 50) return "#f97316"
-  return "#22c55e"
-}
-
-function getEstado(nivel) {
-  if (nivel > 80) return "CRÍTICO"
-  if (nivel > 50) return "ALERTA"
-  return "NORMAL"
 }
 
 export default function Simulador({ onNivelesActualizados, onReiniciar, onZonaSeleccionada }) {
@@ -44,8 +32,7 @@ export default function Simulador({ onNivelesActualizados, onReiniciar, onZonaSe
   const [terminado, setTerminado] = useState(false)
   const [zonaSeleccionada, setZonaSeleccionada] = useState(null)
 
-  // Cargar sensores de la API (tipo Mapa)
-  // Cargar sensores de la API con sus datos reales
+  // Cargar sensores de la API
   useEffect(() => {
     const cargarDatos = async () => {
       try {
@@ -60,7 +47,6 @@ export default function Simulador({ onNivelesActualizados, onReiniciar, onZonaSe
         // Inicializar niveles con los datos ACTUALES de cada sensor
         const nivelesIniciales = {}
         sensoresArray.forEach((sensor) => {
-          // Usar el nivel actual del sensor, o 10 como mínimo
           const actualNivel = sensor?.actual?.nivel ?? 10
           nivelesIniciales[sensor.id] = Math.max(0, Math.min(100, actualNivel))
         })
@@ -82,17 +68,12 @@ export default function Simulador({ onNivelesActualizados, onReiniciar, onZonaSe
     }
   }, [niveles, onNivelesActualizados])
 
-  // Calcular nivel máximo que alcanzará cada sensor con lluvia, viento y datos históricos
+  // Calcular nivel máximo que alcanzará cada sensor
   function calcularNivelMax(sensor, nivelActual) {
-    // 1. Incremento base por lluvia × sensibilidad del sensor
     const incrementoLluvia = lluvia * (sensibilidad[sensor.id] ?? 1.0)
-
-    // 2. Factor multiplicador por viento (es un amplificador, no suma independiente)
-    // A mayor viento, se amplifica más el efecto de la lluvia
-    const factorViento = 1 + (viento / 100) // 30 m/s = +30% de amplificación
+    const factorViento = 1 + (viento / 100)
     const incrementoConViento = incrementoLluvia * factorViento
 
-    // 3. Agregar referencia histórica (qué pasó en lluvia similar)
     let incrementoHistorico = 0
     if (Array.isArray(sensor?.historico) && sensor.historico.length > 0) {
       const episodioSimilar = sensor.historico.reduce((prev, curr) =>
@@ -100,17 +81,11 @@ export default function Simulador({ onNivelesActualizados, onReiniciar, onZonaSe
       )
       
       if (episodioSimilar?.nivel_maximo != null) {
-        // Histórico: qué nivel máximo se registró con lluvia similar
-        // Ponderado al 20% (es información, pero el evento actual será diferente)
         incrementoHistorico = episodioSimilar.nivel_maximo * 0.2
       }
     }
 
-    // Usar el máximo entre el incremental calculado O el histórico
-    // (No sumarlos, usar el peor escenario)
     const incrementoFinal = Math.max(incrementoConViento, incrementoHistorico)
-
-    // Retornar nivel actual + incremento final, limitado a 0-100
     return Math.min(100, Math.max(0, nivelActual + incrementoFinal))
   }
 
@@ -125,15 +100,12 @@ export default function Simulador({ onNivelesActualizados, onReiniciar, onZonaSe
 
     intervalRef.current = setInterval(() => {
       paso++
-      const t = paso / pasos // 0 a 1 (progreso)
+      const t = paso / pasos
 
       const nuevosNiveles = {}
       sensores.forEach((sensor) => {
-        // Nivel actual real del sensor
         const nivelActual = sensor?.actual?.nivel ?? 10
-        // Nivel máximo si llueve la cantidad especificada
         const nivelMax = calcularNivelMax(sensor, nivelActual)
-        // Interpolar linealmente desde actual hasta máximo
         nuevosNiveles[sensor.id] = nivelActual + (nivelMax - nivelActual) * t
       })
 
@@ -154,7 +126,6 @@ export default function Simulador({ onNivelesActualizados, onReiniciar, onZonaSe
     setTerminado(false)
     setProgreso(0)
 
-    // Volver a los niveles reales actuales de los sensores
     const nivelesReset = {}
     sensores.forEach((sensor) => {
       const actualNivel = sensor?.actual?.nivel ?? 10
@@ -162,7 +133,6 @@ export default function Simulador({ onNivelesActualizados, onReiniciar, onZonaSe
     })
     setNiveles(nivelesReset)
     
-    // Notificar al Dashboard
     if (onReiniciar) onReiniciar()
   }
 
@@ -176,137 +146,132 @@ export default function Simulador({ onNivelesActualizados, onReiniciar, onZonaSe
   }
 
   return (
-    <>
-      <style>{`
-        @keyframes pulse {
-          0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-          70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
-          100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-        }
-      `}</style>
-
-      <div className="flex flex-col gap-2 overflow-y-auto h-full">
-        <h2 className="text-lg font-bold text-white">Simulador de Escenarios</h2>
-
-        {/* Configuración */}
-        <div className="bg-gray-900 border border-gray-700 rounded-xl p-4 flex flex-col gap-4">
-            <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">
-              Configurar escenario
-            </p>
-
-            {/* Lluvia */}
-            <div className="flex flex-col gap-2">
-              <div className="flex justify-between">
-                <label className="text-sm text-gray-300">Intensidad de lluvia</label>
-                <span className="text-sm font-bold text-blue-400">{lluvia} mm</span>
-              </div>
-              <input
-                type="range"
-                min="1"
-                max="50"
-                value={lluvia}
-                onChange={(e) => setLluvia(Number(e.target.value))}
-                disabled={simulando}
-                className="w-full accent-blue-500"
-              />
-              <div className="flex justify-between text-xs text-gray-500">
-                <span>Ligera</span>
-                <span>Moderada</span>
-                <span>Torrencial</span>
-              </div>
-            </div>
-
-            {/* Viento */}
-            <div className="flex flex-col gap-2">
-              <div className="flex justify-between">
-                <label className="text-sm text-gray-300">Velocidad del viento</label>
-                <span className="text-sm font-bold text-cyan-400">{viento} m/s</span>
-              </div>
-              <input
-                type="range"
-                min="0"
-                max="70"
-                value={viento}
-                onChange={(e) => setViento(Number(e.target.value))}
-                disabled={simulando}
-                className="w-full accent-cyan-500"
-              />
-              <div className="flex justify-between text-xs text-gray-500">
-                <span>Calmoso</span>
-                <span>Moderado</span>
-                <span>Huracán</span>
-              </div>
-            </div>
-
-            {/* Duración */}
-            <div className="flex flex-col gap-2">
-              <div className="flex justify-between">
-                <label className="text-sm text-gray-300">Duración simulación</label>
-                <span className="text-sm font-bold text-blue-400">{duracion}s</span>
-              </div>
-              <input
-                type="range"
-                min="10"
-                max="60"
-                value={duracion}
-                onChange={(e) => setDuracion(Number(e.target.value))}
-                disabled={simulando}
-                className="w-full accent-blue-500"
-              />
-            </div>
-
-            {/* Botones */}
-            {!simulando && !terminado && (
-              <button
-                onClick={iniciarSimulacion}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg transition-colors"
-              >
-                ▶ Iniciar simulación
-              </button>
-            )}
-
-            {simulando && (
-              <div className="flex flex-col gap-2">
-                <div className="flex justify-between text-xs text-gray-400">
-                  <span>Simulando...</span>
-                  <span>{progreso}%</span>
-                </div>
-                <div className="bg-gray-800 rounded-full h-2">
-                  <div
-                    className="h-2 rounded-full bg-blue-500 transition-all"
-                    style={{ width: `${progreso}%` }}
-                  />
-                </div>
-              </div>
-            )}
-
-            {terminado && (
-              <button
-                onClick={resetSimulacion}
-                className="w-full bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 rounded-lg transition-colors"
-              >
-                🔄 Reiniciar
-              </button>
-            )}
+    <div className="flex flex-col gap-3 h-full">
+      {/* Controles de Lluvia */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 justify-between">
+          <label className="text-sm font-semibold text-slate-300 flex items-center gap-2">
+            <CloudDrizzle className="w-4 h-4 text-blue-400" />
+            Lluvia
+          </label>
+          <span className="text-lg font-bold text-blue-300">{lluvia} mm</span>
         </div>
-
-        {/* Zonas de Córdoba - Fuera de la box */}
-        <div className="flex flex-col gap-2">
-          <label className="text-sm text-gray-300">Seleccionar zona</label>
-          <select
-            value={zonaSeleccionada?.id || ""}
-            onChange={handleZonaChange}
-            className="w-full bg-gray-800 text-white border border-gray-600 rounded-lg p-2 text-sm cursor-pointer hover:border-gray-500 transition-colors"
-          >
-            <option value="">-- Seleccionar zona --</option>
-            {ZONAS_CORDOBA.map((zona) => (
-              <option key={zona.id} value={zona.id}>
-                {zona.nombre}
-              </option>
-            ))}
-          </select>
+        <input
+          type="range"
+          min="1"
+          max="50"
+          value={lluvia}
+          onChange={(e) => setLluvia(Number(e.target.value))}
+          disabled={simulando}
+          className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500 disabled:opacity-50"
+        />
+        <div className="grid grid-cols-3 gap-2 text-xs text-slate-400">
+          <span>Ligera</span>
+          <span className="text-center">Moderada</span>
+          <span className="text-right">Torrencial</span>
         </div>
       </div>
-    </>
+
+      {/* Controles de Viento */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 justify-between">
+          <label className="text-sm font-semibold text-slate-300 flex items-center gap-2">
+            <Wind className="w-4 h-4 text-cyan-400" />
+            Viento
+          </label>
+          <span className="text-lg font-bold text-cyan-300">{viento} m/s</span>
+        </div>
+        <input
+          type="range"
+          min="0"
+          max="70"
+          value={viento}
+          onChange={(e) => setViento(Number(e.target.value))}
+          disabled={simulando}
+          className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500 disabled:opacity-50"
+        />
+        <div className="grid grid-cols-3 gap-2 text-xs text-slate-400">
+          <span>Calmoso</span>
+          <span className="text-center">Moderado</span>
+          <span className="text-right">Huracán</span>
+        </div>
+      </div>
+
+      {/* Controles de Duración */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 justify-between">
+          <label className="text-sm font-semibold text-slate-300 flex items-center gap-2">
+            <Clock className="w-4 h-4 text-slate-400" />
+            Duración
+          </label>
+          <span className="text-lg font-bold text-slate-300">{duracion}s</span>
+        </div>
+        <input
+          type="range"
+          min="10"
+          max="60"
+          value={duracion}
+          onChange={(e) => setDuracion(Number(e.target.value))}
+          disabled={simulando}
+          className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-slate-500 disabled:opacity-50"
+        />
+      </div>
+
+      {/* Progreso de Simulación */}
+      {simulando && (
+        <div className="space-y-2">
+          <div className="flex justify-between text-xs text-slate-400">
+            <span className="font-semibold">Simulando...</span>
+            <span className="font-bold text-blue-300">{progreso}%</span>
+          </div>
+          <div className="progress-bar severity-info">
+            <div className="progress-fill" style={{ width: `${progreso}%` }} />
+          </div>
+        </div>
+      )}
+
+      {/* Botones de Acción */}
+      <div className="flex gap-2 pt-2">
+        {!simulando && !terminado && (
+          <button
+            onClick={iniciarSimulacion}
+            disabled={sensores.length === 0}
+            className="flex-1 btn-primary flex items-center justify-center gap-2"
+          >
+            <Play className="w-4 h-4" />
+            Iniciar
+          </button>
+        )}
+
+        {terminado && (
+          <button
+            onClick={resetSimulacion}
+            className="flex-1 btn-secondary flex items-center justify-center gap-2"
+          >
+            <RotateCcw className="w-4 h-4" />
+            Reiniciar
+          </button>
+        )}
+      </div>
+
+      {/* Selector de Zona */}
+      <div className="pt-2 border-t border-slate-700">
+        <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-2">
+          Seleccionar zona
+        </label>
+        <select
+          value={zonaSeleccionada?.id || ""}
+          onChange={handleZonaChange}
+          className="w-full bg-slate-800 text-white border border-slate-700 rounded-lg p-2 text-sm cursor-pointer hover:border-slate-600 transition-colors focus:outline-none focus:border-blue-500"
+        >
+          <option value="">-- Seleccionar zona --</option>
+          {ZONAS_CORDOBA.map((zona) => (
+            <option key={zona.id} value={zona.id}>
+              {zona.nombre}
+            </option>
+          ))}
+        </select>
+      </div>
+    </div>
   )
 }

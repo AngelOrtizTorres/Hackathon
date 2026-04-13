@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react"
+import { Filter, Map as MapIcon } from "lucide-react"
 
 function getTipoSensor(sensor) {
   const tieneNivel = sensor?.actual?.nivel != null
@@ -41,35 +42,19 @@ function getEstado(riesgo) {
 }
 
 function crearIcono(L, color, tipo, riesgo) {
-  // Forma diferente según tipo
-  // nivel → círculo, caudal → diamante, ambos → círculo con borde especial
   const pulso = riesgo > 80 ? "animation: pulse 1.5s infinite;" : ""
+  const glow = `0 0 12px ${color}${riesgo > 80 ? ', 0 0 20px ' + color + '80' : ''}`
 
   if (tipo === "caudal") {
     return L.divIcon({
       className: "",
       html: `<div style="
-        width: 18px; height: 18px;
-        background: ${color};
-        transform: rotate(45deg);
-        border: 2px solid white;
-        box-shadow: 0 0 10px ${color};
-        ${pulso}
-      "></div>`,
-      iconSize: [18, 18],
-      iconAnchor: [9, 9]
-    })
-  }
-
-  if (tipo === "ambos") {
-    return L.divIcon({
-      className: "",
-      html: `<div style="
         width: 20px; height: 20px;
         background: ${color};
-        border-radius: 50%;
-        border: 3px solid white;
-        box-shadow: 0 0 10px ${color}, 0 0 0 2px ${color};
+        transform: rotate(45deg);
+        border: 2.5px solid white;
+        border-radius: 2px;
+        box-shadow: ${glow};
         ${pulso}
       "></div>`,
       iconSize: [20, 20],
@@ -77,19 +62,34 @@ function crearIcono(L, color, tipo, riesgo) {
     })
   }
 
-  // nivel → círculo normal
+  if (tipo === "ambos") {
+    return L.divIcon({
+      className: "",
+      html: `<div style="
+        width: 24px; height: 24px;
+        background: ${color};
+        border-radius: 50%;
+        border: 3px solid white;
+        box-shadow: ${glow}, 0 0 0 2px ${color}40;
+        ${pulso}
+      "></div>`,
+      iconSize: [24, 24],
+      iconAnchor: [12, 12]
+    })
+  }
+
   return L.divIcon({
     className: "",
     html: `<div style="
-      width: 20px; height: 20px;
+      width: 22px; height: 22px;
       background: ${color};
       border-radius: 50%;
-      border: 2px solid white;
-      box-shadow: 0 0 10px ${color};
+      border: 2.5px solid white;
+      box-shadow: ${glow};
       ${pulso}
     "></div>`,
-    iconSize: [20, 20],
-    iconAnchor: [10, 10]
+    iconSize: [22, 22],
+    iconAnchor: [11, 11]
   })
 }
 
@@ -99,7 +99,7 @@ export default function Mapa({ lluviaMM = 0, vientoMs = 0, reiniciarAPIData = fa
   const markersRef = useRef({})
   const [sensores, setSensores] = useState([])
   const [usandoMock, setUsandoMock] = useState(false)
-  const [filtro, setFiltro] = useState("todos") // "todos" | "nivel" | "caudal" | "ambos"
+  const [filtro, setFiltro] = useState("todos")
   const [mostrarTodos, setMostrarTodos] = useState(false)
 
   useEffect(() => {
@@ -163,8 +163,6 @@ export default function Mapa({ lluviaMM = 0, vientoMs = 0, reiniciarAPIData = fa
         if (!Number.isFinite(sensor.lat) || !Number.isFinite(sensor.lng)) return
 
         const tipo = getTipoSensor(sensor)
-
-        // Aplicar filtro
         const visible = filtro === "todos" || filtro === tipo
         if (!visible) {
           if (markersRef.current[sensor.id]) {
@@ -177,7 +175,6 @@ export default function Mapa({ lluviaMM = 0, vientoMs = 0, reiniciarAPIData = fa
         const nivelSimulado = nivelesSimulados ? nivelesSimulados[sensor.id] : null
         const riesgo = calcularRiesgo(sensor, nivelSimulado, lluviaMM, vientoMs)
 
-        // Filtrar por riesgo: mostrar todos si está activado, o solo alerta+críticos
         if (!mostrarTodos && riesgo <= 50) {
           if (markersRef.current[sensor.id]) {
             mapInstance.current.removeLayer(markersRef.current[sensor.id])
@@ -191,32 +188,32 @@ export default function Mapa({ lluviaMM = 0, vientoMs = 0, reiniciarAPIData = fa
         const icono = crearIcono(L, color, tipo, riesgo)
 
         const popup = `
-          <div style="font-family: sans-serif; min-width: 180px; padding: 4px">
-            <b style="font-size: 14px">${sensor?.nombre ?? "Sin nombre"}</b>
-            <div style="font-size: 11px; color: #888; margin-bottom: 4px">
+          <div style="font-family: 'Segoe UI', sans-serif; min-width: 200px; padding: 8px">
+            <b style="font-size: 15px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px">${sensor?.nombre ?? "Sin nombre"}</b>
+            <div style="font-size: 11px; color: #64748b; margin-bottom: 8px; font-weight: 500">
               ${tipo === "nivel" ? "📊 Sensor de nivel" : tipo === "caudal" ? "💧 Sensor de caudal" : "📊💧 Nivel y caudal"}
             </div>
-            ${nivelSimulado !== null ? `<div style="font-size: 12px; color: #3b82f6; font-weight: bold; margin-bottom: 4px;">🔬 SIMULACIÓN</div>` : ""}
-            <hr style="margin: 6px 0; border-color: #eee"/>
-            <div style="display:flex; justify-content:space-between; margin-bottom:4px">
-              <span style="color:#666">Estado</span>
-              <b style="color:${color}">${estado}</b>
+            ${nivelSimulado !== null ? `<div style="font-size: 11px; color: #3b82f6; font-weight: bold; margin-bottom: 8px; background: #dbeafe; padding: 3px 6px; border-radius: 3px; display: inline-block">🔬 SIMULACIÓN ACTIVA</div>` : ""}
+            <hr style="margin: 8px 0; border: none; border-top: 1px solid #e2e8f0"/>
+            <div style="display:flex; justify-content:space-between; margin-bottom:6px">
+              <span style="color:#64748b; font-size: 12px">Estado</span>
+              <b style="color:${color}; font-size: 12px">${estado}</b>
             </div>
-            <div style="display:flex; justify-content:space-between; margin-bottom:4px">
-              <span style="color:#666">Riesgo</span>
-              <b>${riesgo.toFixed(0)}%</b>
+            <div style="display:flex; justify-content:space-between; margin-bottom:6px">
+              <span style="color:#64748b; font-size: 12px">Riesgo</span>
+              <b style="font-size: 12px">${riesgo.toFixed(0)}%</b>
             </div>
             ${sensor?.actual?.nivel != null && nivelSimulado === null ? `
-            <div style="display:flex; justify-content:space-between; margin-bottom:4px">
-              <span style="color:#666">Nivel actual</span>
-              <b>${sensor.actual.nivel}%</b>
+            <div style="display:flex; justify-content:space-between; margin-bottom:6px">
+              <span style="color:#64748b; font-size: 12px">Nivel actual</span>
+              <b style="font-size: 12px">${sensor.actual.nivel}%</b>
             </div>` : ""}
             ${sensor?.actual?.caudal != null && nivelSimulado === null ? `
-            <div style="display:flex; justify-content:space-between">
-              <span style="color:#666">Caudal actual</span>
-              <b>${sensor.actual.caudal} L/s</b>
+            <div style="display:flex; justify-content:space-between; margin-bottom:6px">
+              <span style="color:#64748b; font-size: 12px">Caudal actual</span>
+              <b style="font-size: 12px">${sensor.actual.caudal} L/s</b>
             </div>` : ""}
-            <div style="margin-top:8px; background:#f3f4f6; border-radius:4px; height:6px">
+            <div style="margin-top:8px; background:#f1f5f9; border-radius:4px; height:6px; overflow: hidden">
               <div style="width:${riesgo}%; height:100%; background:${color}; border-radius:4px;"></div>
             </div>
           </div>
@@ -242,82 +239,104 @@ export default function Mapa({ lluviaMM = 0, vientoMs = 0, reiniciarAPIData = fa
       <style>{`
         @keyframes pulse {
           0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-          70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+          70% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
           100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
         }
+        .leaflet-control-attribution { display: none !important; }
       `}</style>
-      <div className="relative h-full w-full rounded-xl overflow-hidden">
-
-        {/* Botones de filtro encima del mapa */}
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] flex gap-2">
-          {[
-            { key: "todos", label: "Todos" },
-            { key: "nivel", label: "📊 Nivel" },
-            { key: "caudal", label: "💧 Caudal" },
-            { key: "ambos", label: "📊💧 Ambos" }
-          ].map(({ key, label }) => (
-            <button
-              key={key}
-              onClick={() => setFiltro(key)}
-              className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${
-                filtro === key
-                  ? "bg-blue-600 border-blue-500 text-white"
-                  : "bg-gray-900 border-gray-600 text-gray-300 hover:bg-gray-800"
-              }`}
-            >
-              {label}
-            </button>
-          ))}
+      <div className="relative h-full w-full rounded-xl overflow-hidden bg-slate-100">
+        {/* Controles de Filtro */}
+        <div className="absolute top-4 left-4 z-[1000] flex flex-col gap-2">
+          <div className="flex gap-2 bg-slate-900/90 backdrop-blur-sm border border-slate-700 rounded-lg p-2 flex-wrap">
+            {[
+              { key: "todos", label: "Todos" },
+              { key: "nivel", label: "Nivel" },
+              { key: "caudal", label: "Caudal" },
+              { key: "ambos", label: "Ambos" }
+            ].map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => setFiltro(key)}
+                className={`px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all duration-300 ${
+                  filtro === key
+                    ? "bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/50"
+                    : "bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* Leyenda */}
-        <div className="absolute bottom-6 left-3 z-[1000] bg-gray-900 bg-opacity-90 border border-gray-700 rounded-xl p-3 flex flex-col gap-2 text-xs text-gray-300">
-          <p className="font-semibold text-white mb-1">Tipo de sensor</p>
-          <div className="flex items-center gap-2">
-            <div style={{ width: 14, height: 14, borderRadius: "50%", background: "#6b7280", border: "2px solid white" }} />
-            <span>Nivel</span>
+        {/* Leyenda Profesional */}
+        <div className="absolute bottom-4 right-4 z-[1000] bg-slate-950/95 backdrop-blur-md border border-slate-700 rounded-lg p-4 shadow-2xl max-w-xs">
+          <div className="space-y-3 text-xs text-slate-300">
+            <div className="flex items-center gap-2 pb-2 border-b border-slate-800">
+              <MapIcon className="w-4 h-4 text-blue-400" />
+              <p className="font-bold text-white uppercase tracking-wider text-xs">Legend</p>
+            </div>
+
+            {/* Tipos de Sensores */}
+            <div>
+              <p className="text-slate-400 font-semibold mb-2 uppercase text-xs">Tipo de Sensor</p>
+              <div className="space-y-1.5 ml-1">
+                <div className="flex items-center gap-2">
+                  <div style={{ width: 16, height: 16, borderRadius: "50%", background: "#64748b", border: "2px solid white" }} />
+                  <span className="text-slate-300">Nivel</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div style={{ width: 14, height: 14, background: "#64748b", transform: "rotate(45deg)", border: "2px solid white" }} />
+                  <span className="text-slate-300">Caudal</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div style={{ width: 18, height: 18, borderRadius: "50%", background: "#64748b", border: "3px solid white" }} />
+                  <span className="text-slate-300">Ambos</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t border-slate-800 pt-2">
+              <p className="text-slate-400 font-semibold mb-2 uppercase text-xs">Nivel de Riesgo</p>
+              <div className="space-y-1.5 ml-1">
+                <div className="flex items-center gap-2">
+                  <div style={{ width: 12, height: 12, borderRadius: "50%", background: "#22c55e" }} />
+                  <span className="text-slate-300">Normal ≤ 50%</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div style={{ width: 12, height: 12, borderRadius: "50%", background: "#f97316" }} />
+                  <span className="text-slate-300">Alerta 50-80%</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div style={{ width: 12, height: 12, borderRadius: "50%", background: "#ef4444" }} />
+                  <span className="text-slate-300">Crítico &gt; 80%</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t border-slate-800 pt-2">
+              <label className="flex items-center gap-2 cursor-pointer hover:text-slate-100 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={mostrarTodos}
+                  onChange={(e) => setMostrarTodos(e.target.checked)}
+                  className="w-4 h-4 rounded cursor-pointer accent-blue-500"
+                />
+                <span className="font-medium">Mostrar todos los sensores</span>
+              </label>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <div style={{ width: 12, height: 12, background: "#6b7280", transform: "rotate(45deg)", border: "2px solid white" }} />
-            <span>Caudal</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div style={{ width: 14, height: 14, borderRadius: "50%", background: "#6b7280", border: "3px solid white" }} />
-            <span>Nivel y caudal</span>
-          </div>
-          <hr className="border-gray-700 my-1" />
-          <p className="font-semibold text-white mb-1">Riesgo</p>
-          <div className="flex items-center gap-2">
-            <div style={{ width: 12, height: 12, borderRadius: "50%", background: "#22c55e" }} />
-            <span>Normal</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div style={{ width: 12, height: 12, borderRadius: "50%", background: "#f97316" }} />
-            <span>Alerta</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div style={{ width: 12, height: 12, borderRadius: "50%", background: "#ef4444" }} />
-            <span>Crítico</span>
-          </div>
-          <hr className="my-2 border-gray-600" />
-          <label className="flex items-center gap-2 cursor-pointer hover:text-white transition-colors">
-            <input
-              type="checkbox"
-              checked={mostrarTodos}
-              onChange={(e) => setMostrarTodos(e.target.checked)}
-              className="w-4 h-4 cursor-pointer"
-            />
-            <span className="text-xs">Mostrar todos</span>
-          </label>
         </div>
 
-        <div ref={mapRef} style={{ height: "100%", width: "100%" }} />
-
+        {/* Estado datos simulados */}
         {usandoMock && (
-          <div className="absolute top-2 right-2 bg-yellow-900 border border-yellow-600 text-yellow-400 text-xs px-2 py-1 rounded-lg">
-            ⚠ Usando datos simulados
+          <div className="absolute top-4 right-4 z-[900] bg-orange-900/90 backdrop-blur-sm border border-orange-600 text-orange-300 text-xs px-3 py-2 rounded-lg font-semibold flex items-center gap-2">
+            <span className="text-sm">⚠️</span>
+            Usando datos de demostración
           </div>
         )}
+
+        <div ref={mapRef} style={{ height: "100%", width: "100%" }} />
       </div>
     </>
   )
